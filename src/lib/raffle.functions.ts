@@ -12,15 +12,17 @@ import {
 } from "./pix.server";
 import { createServerSupabasePublicClient } from "./supabase-public.server";
 
-const createOrderInputSchema = z.object({
-  numbers: z.array(z.number().int().min(0).max(100)),
-  buyer: z.object({
-    name: z.string(),
-    whatsapp: z.string(),
-    email: z.string().email(),
-    cpf: z.string(),
-  }),
-});
+async function getActiveRaffle() {
+  const supabasePublic = createServerSupabasePublicClient();
+  const { data, error } = await supabasePublic
+    .from("raffles")
+    .select("id, title, description, image_url, price_per_number, total_numbers, status")
+    .eq("status", "active")
+    .maybeSingle();
+  if (error) throw new Error("Erro ao carregar rifa ativa.");
+  if (!data) throw new Error("Nenhuma rifa ativa no momento.");
+  return data;
+}
 
 export const createPixOrder = createServerFn({ method: "POST" })
   .validator((input) => createOrderSchema.parse(input))
@@ -34,13 +36,15 @@ export const createPixOrder = createServerFn({ method: "POST" })
       "@/integrations/supabase/client.server"
     );
 
-    const amount = data.numbers.length * 25;
+    const raffle = await getActiveRaffle();
+    const amount = data.numbers.length * Number(raffle.price_per_number);
     const orderId = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
     const { data: reserved, error: reserveError } = await supabaseAdmin.rpc(
       "reserve_numbers",
       {
+        _raffle_id: raffle.id,
         _numbers: data.numbers,
         _order_id: orderId,
         _expires_at: expiresAt,
@@ -56,7 +60,7 @@ export const createPixOrder = createServerFn({ method: "POST" })
     const firstName = data.buyer.name.split(" ")[0];
     const lastName = data.buyer.name.split(" ").slice(1).join(" ");
 
-    const description = `Rifa Air Fryer + R$500 - Números: ${data.numbers.map((n) => n.toString().padStart(2, "0")).join(", ")}`;
+    const description = `${raffle.title} - Números: ${data.numbers.map((n) => n.toString().padStart(2, "0")).join(", ")}`;
 
     let notificationUrl: string | undefined;
     const publicUrl = process.env.PUBLIC_APP_URL;
@@ -89,6 +93,7 @@ export const createPixOrder = createServerFn({ method: "POST" })
 
     const { error: insertError } = await supabaseAdmin.from("orders").insert({
       id: orderId,
+      raffle_id: raffle.id,
       numbers: data.numbers,
       amount,
       buyer_name: data.buyer.name,
@@ -178,9 +183,18 @@ export const listRaffleNumbers = createServerFn({ method: "GET" }).handler(
   async () => {
     const supabasePublic = createServerSupabasePublicClient();
 
+    const { data: raffle } = await supabasePublic
+      .from("raffles")
+      .select("id")
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (!raffle) return [];
+
     const { data, error } = await supabasePublic
       .from("raffle_numbers")
       .select("number, status, order_id")
+      .eq("raffle_id", raffle.id)
       .order("number", { ascending: true });
 
     if (error) {
@@ -189,5 +203,25 @@ export const listRaffleNumbers = createServerFn({ method: "GET" }).handler(
     }
 
     return data;
+  },
+);
+
+export const getActiveRaffleInfo = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const raffle = await getActiveRaffle();
+    return raffle;
+  },
+);
+
+export const listFinishedRaffles = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const supabasePublic = createServerSupabasePublicClient();
+    const { data, error } = await supabasePublic
+      .from("raffles")
+      .select("id, title, image_url, winner_number, winner_name, finished_at")
+      .eq("status", "finished")
+      .order("finished_at", { ascending: false });
+    if (error) throw new Error("Erro ao carregar histórico.");
+    return data ?? [];
   },
 );
