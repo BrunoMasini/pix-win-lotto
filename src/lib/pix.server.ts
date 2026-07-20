@@ -110,16 +110,36 @@ export async function getPaymentStatus(
   };
 }
 
-export function verifyWebhookSignature(
-  payload: string,
-  signature: string,
-  secret: string,
-): boolean {
-  const expected = createHmac("sha256", secret).update(payload).digest("hex");
-  const sig = Buffer.from(signature);
-  const exp = Buffer.from(expected);
-  if (sig.length !== exp.length) return false;
-  return timingSafeEqual(sig, exp);
+/**
+ * Validates Mercado Pago x-signature header.
+ * Header format: `ts=TIMESTAMP,v1=HASH`
+ * Manifest:      `id:DATA_ID;request-id:REQUEST_ID;ts:TIMESTAMP;`
+ */
+export function verifyMercadoPagoSignature(params: {
+  xSignature: string;
+  xRequestId: string;
+  dataId: string;
+  secret: string;
+}): boolean {
+  const { xSignature, xRequestId, dataId, secret } = params;
+  if (!xSignature || !xRequestId || !dataId || !secret) return false;
+
+  const parts = xSignature.split(",").map((p) => p.trim());
+  const kv: Record<string, string> = {};
+  for (const part of parts) {
+    const [k, v] = part.split("=");
+    if (k && v) kv[k.trim()] = v.trim();
+  }
+  const ts = kv["ts"];
+  const v1 = kv["v1"];
+  if (!ts || !v1) return false;
+
+  const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
+  const expected = createHmac("sha256", secret).update(manifest).digest("hex");
+  const a = Buffer.from(expected);
+  const b = Buffer.from(v1);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
 }
 
 export function sanitizeCpf(cpf: string): string {

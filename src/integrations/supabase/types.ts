@@ -14,6 +14,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_users: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           amount: number
@@ -29,6 +44,7 @@ export type Database = {
           paid_at: string | null
           pix_copia_cola: string | null
           pix_qr_code_base64: string | null
+          raffle_id: string | null
           status: Database["public"]["Enums"]["order_status"]
         }
         Insert: {
@@ -45,6 +61,7 @@ export type Database = {
           paid_at?: string | null
           pix_copia_cola?: string | null
           pix_qr_code_base64?: string | null
+          raffle_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
         }
         Update: {
@@ -61,28 +78,96 @@ export type Database = {
           paid_at?: string | null
           pix_copia_cola?: string | null
           pix_qr_code_base64?: string | null
+          raffle_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_raffle_id_fkey"
+            columns: ["raffle_id"]
+            isOneToOne: false
+            referencedRelation: "raffles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       raffle_numbers: {
         Row: {
           number: number
           order_id: string | null
+          raffle_id: string
           status: Database["public"]["Enums"]["raffle_number_status"]
           updated_at: string
         }
         Insert: {
           number: number
           order_id?: string | null
+          raffle_id: string
           status?: Database["public"]["Enums"]["raffle_number_status"]
           updated_at?: string
         }
         Update: {
           number?: number
           order_id?: string | null
+          raffle_id?: string
           status?: Database["public"]["Enums"]["raffle_number_status"]
           updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raffle_numbers_raffle_id_fkey"
+            columns: ["raffle_id"]
+            isOneToOne: false
+            referencedRelation: "raffles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      raffles: {
+        Row: {
+          created_at: string
+          description: string
+          finished_at: string | null
+          id: string
+          image_url: string | null
+          price_per_number: number
+          status: string
+          title: string
+          total_numbers: number
+          updated_at: string
+          winner_name: string | null
+          winner_number: number | null
+          winner_order_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          finished_at?: string | null
+          id?: string
+          image_url?: string | null
+          price_per_number?: number
+          status?: string
+          title: string
+          total_numbers?: number
+          updated_at?: string
+          winner_name?: string | null
+          winner_number?: number | null
+          winner_order_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          finished_at?: string | null
+          id?: string
+          image_url?: string | null
+          price_per_number?: number
+          status?: string
+          title?: string
+          total_numbers?: number
+          updated_at?: string
+          winner_name?: string | null
+          winner_number?: number | null
+          winner_order_id?: string | null
         }
         Relationships: []
       }
@@ -92,9 +177,27 @@ export type Database = {
     }
     Functions: {
       confirm_numbers: { Args: { _order_id: string }; Returns: undefined }
+      finalize_raffle: {
+        Args: {
+          _new_description: string
+          _new_image_url: string
+          _new_price: number
+          _new_title: string
+          _new_total_numbers: number
+          _raffle_id: string
+          _winner_number: number
+        }
+        Returns: string
+      }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
       release_numbers: { Args: { _order_id: string }; Returns: undefined }
       reserve_numbers: {
-        Args: { _expires_at: string; _numbers: number[]; _order_id: string }
+        Args: {
+          _expires_at: string
+          _numbers: number[]
+          _order_id: string
+          _raffle_id: string
+        }
         Returns: boolean
       }
     }

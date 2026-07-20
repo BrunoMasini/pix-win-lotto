@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { verifyWebhookSignature, getPaymentStatus } from "@/lib/pix.server";
+import { verifyMercadoPagoSignature, getPaymentStatus } from "@/lib/pix.server";
 
 const webhookPayloadSchema = z.object({
   data: z.object({
@@ -14,16 +14,14 @@ export const Route = createFileRoute("/api/public/mp-webhook")({
     handlers: {
       POST: async ({ request }) => {
         const body = await request.text();
-        const signature = request.headers.get("x-signature") || "";
+        const url = new URL(request.url);
+        const xSignature = request.headers.get("x-signature") || "";
+        const xRequestId = request.headers.get("x-request-id") || "";
         const secret = process.env.MERCADO_PAGO_WEBHOOK_SECRET;
         const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
 
         if (!accessToken) {
           return new Response("Access token not configured", { status: 500 });
-        }
-
-        if (secret && !verifyWebhookSignature(body, signature, secret)) {
-          return new Response("Invalid signature", { status: 401 });
         }
 
         let payload: unknown;
@@ -39,6 +37,21 @@ export const Route = createFileRoute("/api/public/mp-webhook")({
         }
 
         const paymentId = parsed.data.data.id;
+        // MP puts the payment id in either the body.data.id or the ?data.id= query param.
+        const dataIdForManifest =
+          url.searchParams.get("data.id") || paymentId;
+
+        if (secret) {
+          const valid = verifyMercadoPagoSignature({
+            xSignature,
+            xRequestId,
+            dataId: dataIdForManifest,
+            secret,
+          });
+          if (!valid) {
+            return new Response("Invalid signature", { status: 401 });
+          }
+        }
 
         try {
           const payment = await getPaymentStatus(paymentId, accessToken);
