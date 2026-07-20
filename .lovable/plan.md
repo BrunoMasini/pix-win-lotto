@@ -1,36 +1,48 @@
-# Plano: Configurar Mercado Pago
+# Plano: Ajustar função de geração de PIX no Mercado Pago
 
-## Objetivo
-Tornar o sistema de rifa funcional para pagamentos reais, configurando as credenciais do Mercado Pago e garantindo que a geração de PIX, o polling de status e o webhook estejam operacionais.
+## Situação atual
+A função server-side de geração de PIX já existe e cobre quase todos os requisitos pedidos:
 
-## Passos
+- `src/lib/pix.server.ts` → `createPixPayment()` faz `POST https://api.mercadopago.com/v1/payments` com:
+  - `Authorization: Bearer {MERCADO_PAGO_ACCESS_TOKEN}`
+  - `Content-Type: application/json`
+  - `X-Idempotency-Key` (usa o `orderId` UUID gerado como chave de idempotência)
+  - payload com `transaction_amount`, `description`, `payment_method_id: "pix"`, `payer` (email, first_name, last_name, identification CPF)
+  - retorna `id`, `qr_code_base64`, `qr_code`, `status`, `date_of_expiration`
+- `src/lib/raffle.functions.ts` → `createPixOrder` (createServerFn):
+  - valida entrada com Zod (`createOrderSchema`: números, nome, whatsapp, e-mail, CPF)
+  - reserva números atomicamente via RPC `reserve_numbers`
+  - chama `createPixPayment`
+  - persiste o pedido na tabela `orders`
+  - retorna `{ orderId, qrBase64, qrCopiaCola, expiresAt }` para o frontend
+  - `try/catch` libera números em caso de falha
+- Frontend (`src/routes/index.tsx` + `PixPaymentDialog`) já consome esses campos e faz polling via `getOrderStatus`.
 
-1. **Coletar credenciais do Mercado Pago**
-   - Solicitar ao usuário o `MERCADO_PAGO_ACCESS_TOKEN` (produção ou teste) usando o formulário seguro de secrets.
-   - Solicitar opcionalmente o `MERCADO_PAGO_WEBHOOK_SECRET` para validar callbacks do Mercado Pago.
-   - Explicar onde encontrar esses valores no painel do Mercado Pago (Desenvolvedores → Credenciais → Access Token; Webhooks → Assinatura secreta).
+## O que falta para atender 100% ao requisito
 
-2. **Adicionar controle de ambiente Sandbox/Produção**
-   - Criar uma variável de ambiente `MERCADO_PAGO_SANDBOX` (booleano) para facilitar a troca entre teste e produção sem alterar código.
-   - Ajustar a URL da API do Mercado Pago dinamicamente quando em sandbox, se necessário (a API v1 já funciona com tokens de teste, mas a URL base pode ser alternada se o usuário usar contas de teste específicas).
+1. **Adicionar `notification_url` ao payload do Mercado Pago**
+   - Hoje o webhook (`/api/public/mp-webhook`) existe, mas a URL não é enviada na criação do pagamento.
+   - Adicionar campo opcional `notificationUrl` no `PixPaymentRequest` (em `pix.server.ts`) e incluí-lo no body quando presente.
+   - Em `createPixOrder`, montar a URL a partir da variável de ambiente `PUBLIC_APP_URL` (a definir) ou, na ausência dela, derivar do header `Host` da request via `getRequestHost()` de `@tanstack/react-start/server`, sempre em HTTPS. Se nenhum dos dois estiver disponível, omitir o campo (Mercado Pago aceita a criação sem `notification_url`).
 
-3. **Garantir segurança do webhook**
-   - Verificar o endpoint `/api/public/mp-webhook` já implementado.
-   - Confirmar que a verificação de assinatura HMAC só é exigida quando `MERCADO_PAGO_WEBHOOK_SECRET` está configurado, permitindo testes manuais sem segredo.
+2. **Documentar/garantir presença dos secrets**
+   - `MERCADO_PAGO_ACCESS_TOKEN` continua obrigatório (já validado com erro claro).
+   - `MERCADO_PAGO_WEBHOOK_SECRET` continua opcional (webhook só valida assinatura quando presente).
+   - Confirmar mensagens de erro amigáveis quando o token estiver ausente.
 
-4. **Validar endpoints e fluxo de pagamento**
-   - Verificar se o endpoint de webhook está acessível publicamente e pronto para receber notificações.
-   - Confirmar que o polling no frontend continua funcionando como fallback enquanto o webhook não chega.
+3. **Reforçar tratamento de erros no server function**
+   - Já há `try` implícito via checagem de erros; adicionar `try/catch` explícito em `createPixOrder` envolvendo a chamada `createPixPayment` para liberar os números reservados caso o Mercado Pago retorne erro (hoje isso só acontece na falha do `insert`).
 
-5. **Instruções de teste**
-   - Orientar o usuário a usar a conta de teste do Mercado Pago para simular um pagamento PIX sem dinheiro real, validando:
-     - Geração do QR Code.
-     - Atualização de status para "pago".
-     - Marcação dos números como pagos no banco.
+## Arquivos a alterar
 
-## Resultado esperado
-Sistema pronto para receber pagamentos PIX reais via Mercado Pago, com ambiente configurável e validação segura de webhooks.
+- `src/lib/pix.server.ts`
+  - Adicionar `notificationUrl?: string` em `PixPaymentRequest`.
+  - Incluir `notification_url` no payload quando presente.
+- `src/lib/raffle.functions.ts`
+  - Importar `getRequestHost` de `@tanstack/react-start/server`.
+  - Calcular `notificationUrl` (env `PUBLIC_APP_URL` → host da request → omitir).
+  - Envolver a chamada a `createPixPayment` em `try/catch` que executa `release_numbers` antes de repropagar o erro.
 
-## Observações
-- Os tokens nunca serão expostos no código; serão armazenados como secrets do projeto.
-- A configuração de webhook no painel do Mercado Pago deve apontar para o URL publicado do projeto seguido de `/api/public/mp-webhook`.
+## Não faz parte deste plano
+- Alterar UI, esquema do banco, ou lógica de polling/webhook (já implementados e funcionando conforme o requisito).
+- Configuração dos secrets em si — já são solicitados via formulário seguro.

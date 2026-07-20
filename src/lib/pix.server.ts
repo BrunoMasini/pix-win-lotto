@@ -14,6 +14,7 @@ export interface PixPaymentRequest {
   description: string;
   payer: PayerInfo;
   idempotencyKey: string;
+  notificationUrl?: string;
 }
 
 export interface PixPaymentResponse {
@@ -28,7 +29,7 @@ export async function createPixPayment(
   request: PixPaymentRequest,
   accessToken: string,
 ): Promise<PixPaymentResponse> {
-  const payload = {
+  const payload: Record<string, unknown> = {
     transaction_amount: request.amount,
     payment_method_id: "pix",
     description: request.description,
@@ -42,6 +43,10 @@ export async function createPixPayment(
       },
     },
   };
+
+  if (request.notificationUrl) {
+    payload.notification_url = request.notificationUrl;
+  }
 
   const response = await fetch(MP_API_URL, {
     method: "POST",
