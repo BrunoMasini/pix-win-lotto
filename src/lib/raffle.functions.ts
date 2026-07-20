@@ -23,7 +23,7 @@ const createOrderInputSchema = z.object({
 });
 
 export const createPixOrder = createServerFn({ method: "POST" })
-  .inputValidator((input) => createOrderSchema.parse(input))
+  .validator((input) => createOrderSchema.parse(input))
   .handler(async ({ data }) => {
     const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
     if (!accessToken) {
