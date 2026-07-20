@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequestHost } from "@tanstack/react-start/server";
 import { z } from "zod";
 import {
   createOrderSchema,
@@ -58,20 +59,42 @@ export const createPixOrder = createServerFn({ method: "POST" })
 
     const description = `Rifa Air Fryer + R$500 - Números: ${data.numbers.map((n) => n.toString().padStart(2, "0")).join(", ")}`;
 
-    const pix = await createPixPayment(
-      {
-        amount,
-        description,
-        payer: {
-          email: data.buyer.email,
-          firstName,
-          lastName,
-          cpf: sanitizeCpf(data.buyer.cpf),
+    let notificationUrl: string | undefined;
+    const publicUrl = process.env.PUBLIC_APP_URL;
+    if (publicUrl) {
+      notificationUrl = `${publicUrl.replace(/\/$/, "")}/api/public/mp-webhook`;
+    } else {
+      try {
+        const host = getRequestHost();
+        if (host && !host.includes("localhost") && !host.startsWith("127.")) {
+          notificationUrl = `https://${host}/api/public/mp-webhook`;
+        }
+      } catch {
+        // no request context (unexpected); skip notification_url
+      }
+    }
+
+    let pix;
+    try {
+      pix = await createPixPayment(
+        {
+          amount,
+          description,
+          payer: {
+            email: data.buyer.email,
+            firstName,
+            lastName,
+            cpf: sanitizeCpf(data.buyer.cpf),
+          },
+          idempotencyKey: orderId,
+          notificationUrl,
         },
-        idempotencyKey: orderId,
-      },
-      accessToken,
-    );
+        accessToken,
+      );
+    } catch (err) {
+      await supabaseAdmin.rpc("release_numbers", { _order_id: orderId });
+      throw err;
+    }
 
     const { error: insertError } = await supabaseAdmin.from("orders").insert({
       id: orderId,
