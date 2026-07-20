@@ -132,6 +132,32 @@
   --sidebar-ring: oklch(0.551 0.027 264.364);
 }
 
+:root {
+  --raffle-red: oklch(0.55 0.22 25);
+  --raffle-red-light: oklch(0.65 0.18 30);
+  --raffle-gold: oklch(0.75 0.16 85);
+  --raffle-gold-dark: oklch(0.65 0.14 80);
+  --raffle-cream: oklch(0.97 0.01 85);
+  --raffle-green: oklch(0.65 0.18 145);
+  --raffle-green-dark: oklch(0.55 0.16 145);
+  --raffle-yellow: oklch(0.85 0.14 90);
+  --raffle-yellow-dark: oklch(0.75 0.12 85);
+  --raffle-gray: oklch(0.75 0.02 260);
+}
+
+@theme inline {
+  --color-raffle-red: var(--raffle-red);
+  --color-raffle-red-light: var(--raffle-red-light);
+  --color-raffle-gold: var(--raffle-gold);
+  --color-raffle-gold-dark: var(--raffle-gold-dark);
+  --color-raffle-cream: var(--raffle-cream);
+  --color-raffle-green: var(--raffle-green);
+  --color-raffle-green-dark: var(--raffle-green-dark);
+  --color-raffle-yellow: var(--raffle-yellow);
+  --color-raffle-yellow-dark: var(--raffle-yellow-dark);
+  --color-raffle-gray: var(--raffle-gray);
+}
+
 @layer base {
   * {
     border-color: var(--color-border);
@@ -140,5 +166,32 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+  }
+}
+
+.raffle-gradient {
+  background: linear-gradient(135deg, var(--raffle-red) 0%, var(--raffle-red-light) 50%, var(--raffle-gold) 100%);
+}
+
+.raffle-gold-shimmer {
+  background: linear-gradient(90deg, var(--raffle-gold-dark) 0%, var(--raffle-gold) 50%, var(--raffle-gold-dark) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@media (max-width: 640px) {
+  .raffle-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 641px) {
+  .raffle-grid {
+    grid-template-columns: repeat(10, minmax(0, 1fr));
   }
 }
