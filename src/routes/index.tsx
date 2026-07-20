@@ -167,7 +167,7 @@ function RafflePage() {
             <span className="mb-3 inline-block rounded-full bg-white/20 px-3 py-1 text-sm font-semibold backdrop-blur-sm">
               Sorteio exclusivo
             </span>
-            <h1 className="font-poppins mt-2 text-3xl font-extrabold leading-tight sm:text-4xl md:text-5xl">
+            <h1 className="font-display mt-2 text-3xl font-extrabold leading-tight sm:text-4xl md:text-5xl">
               Grande Sorteio: Air Fryer Elgin + R$ 500 no PIX!
             </h1>
             <p className="mx-auto mt-4 max-w-2xl text-base opacity-95 sm:text-lg">
@@ -194,7 +194,7 @@ function RafflePage() {
             </div>
 
             <div className="space-y-4">
-              <h2 className="font-poppins text-2xl font-bold text-foreground">
+              <h2 className="font-display text-2xl font-bold text-foreground">
                 O que está em jogo?
               </h2>
               <ul className="space-y-3">
@@ -231,7 +231,7 @@ function RafflePage() {
         <div className="mt-8 rounded-2xl bg-white p-6 shadow-xl sm:p-8">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="font-poppins text-2xl font-bold text-foreground">
+              <h2 className="font-display text-2xl font-bold text-foreground">
                 Escolha seus números
               </h2>
               <p className="text-sm text-muted-foreground">
