@@ -14,16 +14,93 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      orders: {
+        Row: {
+          amount: number
+          buyer_cpf: string
+          buyer_email: string
+          buyer_name: string
+          buyer_whatsapp: string
+          created_at: string
+          expires_at: string
+          id: string
+          mp_payment_id: string | null
+          numbers: number[]
+          paid_at: string | null
+          pix_copia_cola: string | null
+          pix_qr_code_base64: string | null
+          status: Database["public"]["Enums"]["order_status"]
+        }
+        Insert: {
+          amount: number
+          buyer_cpf: string
+          buyer_email: string
+          buyer_name: string
+          buyer_whatsapp: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          mp_payment_id?: string | null
+          numbers: number[]
+          paid_at?: string | null
+          pix_copia_cola?: string | null
+          pix_qr_code_base64?: string | null
+          status?: Database["public"]["Enums"]["order_status"]
+        }
+        Update: {
+          amount?: number
+          buyer_cpf?: string
+          buyer_email?: string
+          buyer_name?: string
+          buyer_whatsapp?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          mp_payment_id?: string | null
+          numbers?: number[]
+          paid_at?: string | null
+          pix_copia_cola?: string | null
+          pix_qr_code_base64?: string | null
+          status?: Database["public"]["Enums"]["order_status"]
+        }
+        Relationships: []
+      }
+      raffle_numbers: {
+        Row: {
+          number: number
+          order_id: string | null
+          status: Database["public"]["Enums"]["raffle_number_status"]
+          updated_at: string
+        }
+        Insert: {
+          number: number
+          order_id?: string | null
+          status?: Database["public"]["Enums"]["raffle_number_status"]
+          updated_at?: string
+        }
+        Update: {
+          number?: number
+          order_id?: string | null
+          status?: Database["public"]["Enums"]["raffle_number_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      confirm_numbers: { Args: { _order_id: string }; Returns: undefined }
+      release_numbers: { Args: { _order_id: string }; Returns: undefined }
+      reserve_numbers: {
+        Args: { _expires_at: string; _numbers: number[]; _order_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      order_status: "pending" | "paid" | "expired" | "cancelled"
+      raffle_number_status: "available" | "pending" | "paid"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +227,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      order_status: ["pending", "paid", "expired", "cancelled"],
+      raffle_number_status: ["available", "pending", "paid"],
+    },
   },
 } as const
