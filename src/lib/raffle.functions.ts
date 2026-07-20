@@ -103,7 +103,7 @@ export const createPixOrder = createServerFn({ method: "POST" })
   });
 
 export const getOrderStatus = createServerFn({ method: "POST" })
-  .inputValidator((input) => orderIdSchema.parse(input))
+  .validator((input) => orderIdSchema.parse(input))
   .handler(async ({ data }) => {
     const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
     if (!accessToken) {
