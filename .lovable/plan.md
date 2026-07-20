@@ -1,40 +1,76 @@
-Token `MERCADO_PAGO_ACCESS_TOKEN` já foi salvo. Agora precisamos corrigir dois gargalos técnicos que impedem o fluxo de funcionar no ambiente atual, validar a build e deixar claro como alternar entre sandbox e produção.
 
-### Problemas confirmados na leitura do código
+## Objetivo
 
-1. **Server function `listRaffleNumbers` usa cliente Supabase manual sem o shim de fetch.** O projeto usa chaves novas no formato `sb_publishable_...` (opaque keys). O Supabase JS client envia por padrão `Authorization: Bearer <key>`, e o PostgREST rejeita com `Expected 3 parts in JWT; got 1`. Os clientes gerados (`src/integrations/supabase/client.ts` e `client.server.ts`) já contêm a função `createSupabaseFetch` que corrige isso. `listRaffleNumbers` cria um `createClient` do zero e não aplica esse shim, então a grade de números pode falhar ao carregar no preview/publicado.
+Adicionar um painel administrativo protegido por login Google (restrito ao seu email), com relatório de vendas, edição do prêmio (título, descrição, imagem, valor por número), finalização de rifas com histórico público, e validação oficial `x-signature` do webhook do Mercado Pago.
 
-2. **URL do webhook depende de `PUBLIC_APP_URL` ou `getRequestHost()`.** Em server functions rodando no runtime serverless, `getRequestHost()` pode não retornar o host correto para a notificação do Mercado Pago. Sem uma URL pública estável, o webhook não chega e a confirmação do PIX depende apenas do polling do usuário.
+## 1. Autenticação e controle de acesso
 
-3. **Não há documentação/clareza sobre sandbox vs produção.** Hoje a mudança de ambiente é feita trocando apenas o valor de `MERCADO_PAGO_ACCESS_TOKEN`, mas isso não está explícito.
+- Habilitar Google como provider social (`supabase--configure_social_auth`).
+- Criar tabela `admin_users(email text unique)` populada só via SQL, com uma função `is_admin(uid)` que confere o email do `auth.users` contra essa tabela. Semear com o seu email (será solicitado depois).
+- Rota `/auth` pública com botão "Entrar com Google" usando `lovable.auth.signInWithOAuth`.
+- Layout `_authenticated` gerenciado pelo Cloud + gate extra em `_authenticated/admin/route.tsx` que chama uma server fn `requireAdmin` (checa `is_admin`) e redireciona não-admins.
+- Somente seu email pode acessar; para criar novos admins, uma tela no painel permite adicionar/remover emails na tabela `admin_users` (protegida por `has_role`).
 
-### O que será feito
+## 2. Modelo de dados — rifas versionadas
 
-1. **Corrigir `src/lib/raffle.functions.ts`**
-   - Reutilizar o cliente Supabase público já gerado (`import { supabase } from "@/integrations/supabase/client"`) no lado do cliente, ou — como se trata de uma server function — importar e aplicar o mesmo `createSupabaseFetch` usado pelos clientes oficiais antes de chamar `createClient`.
-   - Garantir que `listRaffleNumbers` funcione com as chaves `sb_publishable_...`.
+Nova tabela `raffles` (rifa ativa/finalizada) contendo:
+- título, descrição, url da imagem, valor unitário, quantidade de números (fixo 101), status (`active` | `finished`), número sorteado, ganhador, data do sorteio.
 
-2. **Configurar a URL pública do aplicativo**
-   - Adicionar a variável de ambiente `PUBLIC_APP_URL` com a URL estável do projeto (preview ou produção, conforme o ambiente ativo).
-   - Isso garante que o `notification_url` enviado ao Mercado Pago seja sempre uma URL pública válida, sem depender de `getRequestHost()`.
+Alterações:
+- `raffle_numbers` ganha coluna `raffle_id` (FK). Índice único (`raffle_id`, `number`).
+- `orders` ganha `raffle_id`.
+- Funções RPC (`reserve_numbers`, `release_numbers`, `confirm_numbers`) recebem `_raffle_id`.
+- Apenas UMA rifa `active` por vez (constraint parcial única).
+- Ao "Finalizar rifa": admin informa número sorteado → rifa vira `finished`, e uma nova rifa `active` é criada (com prêmio editável antes ou depois) reiniciando a grade 00–100.
 
-3. **Documentar ambiente sandbox vs produção**
-   - Adicionar um comentário/documento breve explicando que basta trocar o valor de `MERCADO_PAGO_ACCESS_TOKEN` para alternar entre `TEST-...` (sandbox) e `APP_USR-...` (produção).
-   - Recomendar testar com uma cobrança de valor mínimo (R$ 0,01) em sandbox antes de ativar produção.
+Políticas RLS:
+- Leitura pública de `raffles` (para landing + histórico).
+- Escrita apenas para admins (via `is_admin`).
 
-4. **Validar a build**
-   - Rodar `bun run build` e corrigir qualquer erro de tipo ou import após as alterações.
+## 3. Painel `/admin`
 
-5. **Testar o fluxo de geração de PIX (sanity check)**
-   - Usar a ferramenta de invocação de server function para chamar `createPixOrder` e verificar se a API do Mercado Pago retorna `id`, `qr_code_base64` e `qr_code` sem erro.
-   - Não será realizado pagamento real; o teste apenas confirma que o token, a URL de webhook e a comunicação com a API estão corretos.
+Rotas dentro de `_authenticated/admin/`:
+- `index.tsx` — Dashboard: total arrecadado, nº pedidos pagos/pendentes/expirados, cotas vendidas, top compradores, gráfico simples de vendas por dia.
+- `orders.tsx` — Tabela de pedidos com filtro por status, busca por nome/whatsapp/CPF, botão para exportar CSV.
+- `raffle.tsx` — Edição do prêmio da rifa ativa (título, descrição, valor unitário, upload de imagem) + botão "Finalizar rifa" (form com número sorteado e nome do ganhador) que arquiva e cria uma nova.
+- `admins.tsx` — Lista de emails admin com adicionar/remover (apenas seu email pode remover/adicionar outros).
 
-### Variáveis de ambiente necessárias
+Upload de imagem: bucket público `raffle-images` no Storage do Cloud; server fn faz signed upload e grava a URL em `raffles.image_url`.
 
-- `MERCADO_PAGO_ACCESS_TOKEN` — já salvo.
-- `PUBLIC_APP_URL` — a ser configurada com a URL estável do ambiente (ex.: `https://id-preview--6dabacd1-ae32-490a-bf20-7af4e0bd9589.lovable.app`).
-- `MERCADO_PAGO_WEBHOOK_SECRET` — opcional. Se informado, o webhook exige a assinatura `x-signature`. Se omitido, o webhook ainda funciona, mas sem verificação de assinatura.
+## 4. Landing pública
 
-### Entregável
+- Consome a rifa `active` (título, descrição, imagem, valor) em vez dos valores hardcoded.
+- Novo bloco "Rifas anteriores" mostrando cards das rifas `finished` com imagem, número sorteado e ganhador.
+- Server fns `getActiveRaffle` e `listFinishedRaffles` (públicas, read-only com cliente publishable).
 
-Sistema de rifa com geração de PIX funcionando, webhook configurado com URL pública, polling automático, e instrução clara de como trocar entre sandbox e produção.
+## 5. Webhook Mercado Pago com x-signature
+
+Atualizar `src/routes/api/public/mp-webhook.ts`:
+- Ler headers `x-signature` (`ts=...,v1=...`) e `x-request-id`.
+- Buscar `data.id` no query string.
+- Reconstruir o manifest `id:{data.id};request-id:{x-request-id};ts:{ts};` e comparar HMAC-SHA256 usando `MERCADO_PAGO_WEBHOOK_SECRET` com `timingSafeEqual`.
+- Rejeitar 401 se assinatura inválida ou secret ausente.
+- Solicitar o secret via `secrets--add_secret` (você copia da aba Webhooks do Mercado Pago).
+
+## 6. Ordem de execução
+
+1. Migração SQL: `raffles`, `admin_users`, `is_admin`, ajustes em `raffle_numbers`/`orders`, RLS, bucket de storage, seed da rifa atual + seu email admin (pergunto qual email antes).
+2. Configurar Google OAuth + solicitar secret `MERCADO_PAGO_WEBHOOK_SECRET`.
+3. Página `/auth`, gate admin, hook `useAdmin`.
+4. Server fns admin (CRUD raffle, admin, upload, finalizar rifa, listagens de pedidos).
+5. UI do painel admin (4 rotas).
+6. Atualizar landing para consumir rifa ativa + card de rifas finalizadas.
+7. Atualizar webhook com validação `x-signature`.
+8. Testar fluxo end-to-end (login → editar prêmio → gerar PIX → webhook assinado → finalizar rifa).
+
+## Detalhes técnicos
+
+- Storage: bucket `raffle-images` público read, insert/update restrito a admins via policy `is_admin(auth.uid())`.
+- `raffle_numbers`: migração popula a grade 00-100 automaticamente ao criar uma nova rifa (trigger `AFTER INSERT ON raffles`).
+- Realtime da grade filtra por `raffle_id` da rifa ativa.
+- Todas as server fns admin usam `requireSupabaseAuth` + checagem `is_admin` server-side antes de qualquer escrita.
+
+## Perguntas para você antes de começar
+
+- Qual é o seu email Google (para semear como primeiro admin)?
+- Você já tem o `MERCADO_PAGO_WEBHOOK_SECRET` (gerado ao configurar a URL de notificação no painel do Mercado Pago) ou vou pedir depois de deployar a URL?
