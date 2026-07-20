@@ -24,6 +24,8 @@ URL pública estável do aplicativo. É usada para montar o `notification_url` q
 
 Se essa variável não estiver configurada, o sistema tenta usar o host da requisição, mas isso pode falhar no runtime serverless.
 
+> A expiração do PIX é configurada em 15 minutos (`date_of_expiration`). O timer na tela de pagamento reflete esse prazo.
+
 ## Variável opcional
 
 ### `MERCADO_PAGO_WEBHOOK_SECRET`
