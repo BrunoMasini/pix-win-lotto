@@ -329,8 +329,13 @@ function ActiveRaffleForm() {
   }, [active?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateMut = useMutation({
-    mutationFn: (payload: Parameters<typeof update>[0]["data"]) =>
-      update({ data: payload }),
+    mutationFn: (payload: {
+      id: string;
+      title: string;
+      description: string;
+      image_url: string | null;
+      price_per_number: number;
+    }) => update({ data: payload }),
     onSuccess: () => {
       setMsg({ type: "ok", text: "Rifa atualizada com sucesso." });
       qc.invalidateQueries();
@@ -348,8 +353,15 @@ function ActiveRaffleForm() {
   const [newTotal, setNewTotal] = useState("101");
 
   const finalizeMut = useMutation({
-    mutationFn: (payload: Parameters<typeof finalize>[0]["data"]) =>
-      finalize({ data: payload }),
+    mutationFn: (payload: {
+      raffleId: string;
+      winnerNumber: number;
+      newTitle: string;
+      newDescription: string;
+      newImageUrl: string | null;
+      newPrice: number;
+      newTotalNumbers: number;
+    }) => finalize({ data: payload }),
     onSuccess: () => {
       setMsg({ type: "ok", text: "Rifa finalizada e nova rifa criada!" });
       setShowFinalize(false);
