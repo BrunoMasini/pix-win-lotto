@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHost } from "@tanstack/react-start/server";
 import { z } from "zod";
 import {
   createOrderSchema,
@@ -11,7 +10,7 @@ import {
   getPaymentStatus,
   sanitizeCpf,
 } from "./pix.server";
-import type { Database } from "@/integrations/supabase/types";
+import { createServerSupabasePublicClient } from "./supabase-public.server";
 
 const createOrderInputSchema = z.object({
   numbers: z.array(z.number().int().min(0).max(100)),
@@ -63,15 +62,6 @@ export const createPixOrder = createServerFn({ method: "POST" })
     const publicUrl = process.env.PUBLIC_APP_URL;
     if (publicUrl) {
       notificationUrl = `${publicUrl.replace(/\/$/, "")}/api/public/mp-webhook`;
-    } else {
-      try {
-        const host = getRequestHost();
-        if (host && !host.includes("localhost") && !host.startsWith("127.")) {
-          notificationUrl = `https://${host}/api/public/mp-webhook`;
-        }
-      } catch {
-        // no request context (unexpected); skip notification_url
-      }
     }
 
     let pix;
@@ -88,6 +78,7 @@ export const createPixOrder = createServerFn({ method: "POST" })
           },
           idempotencyKey: orderId,
           notificationUrl,
+          expirationDate: expiresAt,
         },
         accessToken,
       );
@@ -185,18 +176,7 @@ export const getOrderStatus = createServerFn({ method: "POST" })
 
 export const listRaffleNumbers = createServerFn({ method: "GET" }).handler(
   async () => {
-    const { createClient } = await import("@supabase/supabase-js");
-    const supabasePublic = createClient<Database>(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_PUBLISHABLE_KEY!,
-      {
-        auth: {
-          storage: undefined,
-          persistSession: false,
-          autoRefreshToken: false,
-        },
-      },
-    );
+    const supabasePublic = createServerSupabasePublicClient();
 
     const { data, error } = await supabasePublic
       .from("raffle_numbers")

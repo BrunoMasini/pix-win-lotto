@@ -15,6 +15,7 @@ export interface PixPaymentRequest {
   payer: PayerInfo;
   idempotencyKey: string;
   notificationUrl?: string;
+  expirationDate?: string;
 }
 
 export interface PixPaymentResponse {
@@ -46,6 +47,10 @@ export async function createPixPayment(
 
   if (request.notificationUrl) {
     payload.notification_url = request.notificationUrl;
+  }
+
+  if (request.expirationDate) {
+    payload.date_of_expiration = request.expirationDate;
   }
 
   const response = await fetch(MP_API_URL, {
