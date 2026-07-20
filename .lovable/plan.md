@@ -27,8 +27,8 @@ RLS: leitura pública apenas de `raffle_numbers` (colunas number/status) e do pr
 Seed 00–100 na mesma migration com GRANT `SELECT` a `anon`.
 
 ### 2. Configuração / Segredo
-- Adicionar segredo `MERCADO_PAGO_ACCESS_TOKEN` (usado tanto para Sandbox quanto Produção — o usuário escolhe qual token colar; tokens `TEST-...` são sandbox, `APP_USR-...` são produção, sem código extra).
-- Instrução em tela sobre onde obter (Painel MP → Suas integrações → Credenciais).
+- `MERCADO_PAGO_ACCESS_TOKEN` será solicitado depois via formulário seguro (você disse que não tem agora; o código fica pronto para recebê-lo).
+- `MERCADO_PAGO_WEBHOOK_SECRET` será solicitado depois para validar assinaturas de webhook.
 
 ### 3. Server Functions (createServerFn)
 - `createPixOrder({ numbers, buyer })`
@@ -47,8 +47,6 @@ Seed 00–100 na mesma migration com GRANT `SELECT` a `anon`.
 - Retorna 200 rapidamente.
 - URL estável para colar no painel MP: `https://project--<id>.lovable.app/api/public/mp-webhook`.
 
-Segredo adicional: `MERCADO_PAGO_WEBHOOK_SECRET` (chave secreta de assinatura do painel MP).
-
 ### 5. Frontend (rota `/` — substitui placeholder)
 Landing mobile-first:
 - **Hero**: título "Grande Sorteio: Air Fryer Elgin + R$ 500 no PIX!", imagem do prêmio, descrição, valor por cota.
@@ -66,11 +64,11 @@ Landing mobile-first:
 - **Toaster** para erros/sucesso.
 
 ### 6. Design system
-Paleta quente moderna (vermelho/dourado sobre off-white) definida em `src/styles.css` como tokens semânticos oklch; tipografia Inter/Poppins-alt via `<link>` no `__root.tsx`. SEO: título, description, og:title, og:description, og:image (imagem do prêmio) em `routes/index.tsx`.
+Paleta quente moderna (vermelho/dourado sobre off-white) definida em `src/styles.css` como tokens semânticos oklch; tipografia via `<link>` no `__root.tsx`. SEO: título, description, og:title, og:description, og:image (imagem do prêmio) em `routes/index.tsx`.
 
 ### 7. Verificação
 - Build automático.
-- Chamar `stack_modern--invoke-server-function` em `createPixOrder` (com token de teste) e no webhook (payload fake assinado) para validar fluxo.
+- Chamar `stack_modern--invoke-server-function` em `createPixOrder` e no webhook para validar fluxo.
 - Playwright: selecionar cotas, preencher formulário, gerar PIX, ver QR renderizado.
 
 ## Notas técnicas
@@ -79,6 +77,8 @@ Paleta quente moderna (vermelho/dourado sobre off-white) definida em `src/styles
 - Polling frontend só enquanto o modal PIX estiver aberto; para em `paid`/`expired`.
 - Nada de PII em `/api/public/*`; webhook só recebe `payment.id` e resolve via API MP.
 
-## O que preciso de você depois de aprovar
-1. Access Token do Mercado Pago (Testes ou Produção) — vou pedir via formulário seguro.
-2. Chave secreta de assinatura de webhook — gerada no painel MP após eu implantar o endpoint; peço em seguida.
+## Depois de aprovar / após o build
+1. Você colará o Access Token do Mercado Pago (Testes ou Produção) no formulário seguro que eu enviarei.
+2. Você gerará a chave de assinatura de webhook no painel MP e colará no formulário seguro.
+
+Aprova o plano para eu começar a construir?
