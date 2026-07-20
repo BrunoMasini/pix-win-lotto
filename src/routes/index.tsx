@@ -182,10 +182,12 @@ function RafflePage() {
               <div className="relative w-full max-w-xs">
                 <div className="aspect-square overflow-hidden rounded-2xl bg-raffle-cream shadow-inner">
                   <img
-                    src="https://http2.mlstatic.com/D_NQ_NP_2X_964198-MLU72637163203_112023-F.webp"
+                    src={airFryerImg}
                     alt="Fritadeira Air Fryer Elgin Facilita Fry 3,5L Preta"
                     className="h-full w-full object-contain p-4"
                     loading="eager"
+                    width={1024}
+                    height={1024}
                   />
                 </div>
                 <div className="absolute -right-2 -top-2 rounded-full bg-raffle-gold px-3 py-1 text-sm font-bold text-foreground shadow-md">
