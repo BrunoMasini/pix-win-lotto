@@ -1,35 +1,61 @@
-## Diagnóstico
+# Plano: Teste End-to-End do PIX no Mercado Pago Sandbox
 
-Os números 01 e 02 (e também o 00, que não aparece na grade) ficaram travados como "reservados" por causa de **pedidos de teste antigos que expiraram, mas nunca foram liberados**:
+## Objetivo
+Confirmar que o fluxo de pagamento PIX funciona corretamente no ambiente sandbox do Mercado Pago, garantindo que:
+1. O QR Code e o código copia-e-cola são gerados sem erros.
+2. O pagamento é aprovado no sandbox.
+3. O status do pedido muda para `paid` via polling e/ou webhook.
+4. Os números comprados são marcados como pagos na grade automaticamente.
 
-| Nº | Comprador | Expirou em |
-|----|-----------|------------|
-| 00 | Teste Automatizado | 20/07 17:53 |
-| 01 | Teste Automatizado | 20/07 18:10 |
-| 02 | Bruno Masini | 20/07 18:56 |
+## Pré-condições verificadas
+- O projeto está publicado em `https://pix-win-lotto.lovable.app`.
+- Os segredos `MERCADO_PAGO_ACCESS_TOKEN`, `PUBLIC_APP_URL` e `MERCADO_PAGO_WEBHOOK_SECRET` foram salvos no turno anterior.
+- O usuário atualizou a URL do webhook no painel do Mercado Pago para `https://pix-win-lotto.lovable.app/api/public/mp-webhook`.
 
-Todos os três pedidos estão com `status = pending` e `expires_at` no passado. A liberação automática (`release_numbers`) só roda quando alguém abre o modal do PIX daquele pedido ou quando o webhook do MP notifica cancelamento — como ninguém está fazendo polling desses pedidos abandonados, eles ficam presos.
+## Passos do plano
 
-## Plano
+### 1. Verificar configuração de ambiente
+- Confirmar que o `PUBLIC_APP_URL` aponta para `https://pix-win-lotto.lovable.app`.
+- Validar que o token do Mercado Pago começa com `TEST-` (sandbox).
+- Verificar se há uma rifa ativa com números de 01 a 99 no banco.
 
-1. **Liberar agora** os 3 pedidos de teste travados chamando `release_numbers` para cada um. Isso marca os pedidos como `expired` e devolve os números 00, 01 e 02 para `available`.
+### 2. Simular uma compra de teste
+- Abrir o site publicado em uma sessão anônima do navegador.
+- Selecionar 1 ou 2 números disponíveis na grade.
+- Preencher o formulário de checkout com dados de teste válidos (nome, e-mail, CPF, WhatsApp).
+- Gerar o PIX e capturar:
+  - `orderId` gerado internamente.
+  - `paymentId` retornado pelo Mercado Pago.
+  - QR Code e código copia-e-cola.
 
-2. **Prevenir recorrência** com um job leve: adicionar uma função `expire_stale_orders()` que varre pedidos `pending` com `expires_at < now()` e libera todos de uma vez. Chamá-la no início do `listRaffleNumbers` (server function que a landing usa a cada 10s) — custo desprezível e garante que qualquer pedido abandonado é limpo em segundos, sem cron.
+### 3. Aprovar o pagamento no sandbox
+- Usar a API de testes do Mercado Pago para forçar o status `approved` no pagamento criado:
+  - Endpoint: `POST https://api.mercadopago.com/v1/payments/{payment_id}/test`
+  - Autenticação: Bearer token de sandbox.
+- Confirmar que a resposta da API indica sucesso.
 
-## Detalhes técnicos
+### 4. Validar atualização do status
+- Acompanhar o diálogo de pagamento no frontend:
+  - O polling deve detectar o status `paid` em até 3 segundos.
+  - O diálogo de sucesso deve ser exibido.
+- Verificar no painel administrativo (`/_authenticated/admin`) se o pedido aparece como `paid`.
 
-- Passo 1 usa `supabase--insert` executando `SELECT public.release_numbers(order_id)` para cada um dos 3 IDs listados acima.
-- Passo 2 cria a função via migração:
-  ```sql
-  CREATE OR REPLACE FUNCTION public.expire_stale_orders()
-  RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
-  BEGIN
-    UPDATE public.raffle_numbers SET status='available', order_id=NULL, updated_at=now()
-    WHERE status='pending' AND order_id IN (
-      SELECT id FROM public.orders WHERE status='pending' AND expires_at < now()
-    );
-    UPDATE public.orders SET status='expired'
-    WHERE status='pending' AND expires_at < now();
-  END; $$;
-  ```
-  E em `src/lib/raffle.functions.ts`, no início do handler de `listRaffleNumbers`, chamar `supabaseAdmin.rpc('expire_stale_orders')` (fire-and-forget).
+### 5. Validar atualização da grade
+- Confirmar que os números comprados agora aparecem como pagos (cinza) na grade principal.
+- Verificar se o Realtime do Supabase propagou a mudança sem necessidade de recarregar a página.
+
+### 6. Validar webhook (se aplicável)
+- Consultar os logs do webhook para confirmar que o Mercado Pago enviou a notificação.
+- Verificar se a assinatura `x-signature` foi validada corretamente (quando `MERCADO_PAGO_WEBHOOK_SECRET` está configurado).
+
+### 7. Documentar resultados e ajustes
+- Se tudo funcionar: atualizar o guia `MERCADO_PAGO_SETUP.md` com a confirmação de que o fluxo sandbox foi validado.
+- Se houver falhas: ajustar o código conforme o diagnóstico (ex.: timeout do polling, validação de assinatura, expiração do PIX) e repetir o teste.
+
+## Riscos e observações
+- O Mercado Pago pode ter latência na entrega do webhook; o polling é o caminho principal de confirmação para o usuário.
+- Pagamentos em sandbox precisam ser aprovados manualmente via API de testes; não é possível pagar um PIX de teste usando um banco real.
+- Se o token for de produção (`APP_USR-`), o teste de aprovação via API de sandbox não funcionará.
+
+## Resultado esperado
+Rifa online validada em sandbox: seleção de números, geração de PIX, aprovação de pagamento e atualização automática da grade funcionando corretamente.
