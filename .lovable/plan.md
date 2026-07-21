@@ -1,53 +1,50 @@
-## Plano: Salvar webhook secret + construir painel admin
+## Objetivo
+Ajustar a rifa para 01–99, corrigir a atualização automática da grade após pagamento, validar o fluxo completo e publicar hoje.
 
-Você colou um valor que parece ser a chave de assinatura do webhook do Mercado Pago diretamente no chat. Por segurança, **não vou repetir/ecoar** esse valor e ele **não** deve ser salvo dessa forma — chaves precisam entrar pelo formulário seguro (`add_secret`), que criptografa antes de armazenar.
+## 1. Números 01–99 (remover 00 e 100)
 
-Recomendo trocar essa chave no painel do Mercado Pago (gerar uma nova assinatura), já que o valor trafegou em texto no chat. Depois seguimos o plano abaixo.
+**Migração SQL** (nova):
+- `UPDATE public.raffles SET total_numbers = 99 WHERE status = 'active';`
+- `ALTER TABLE public.raffles ALTER COLUMN total_numbers SET DEFAULT 99;`
+- Apagar da rifa ativa os números 0 e 100 se estiverem `available` (se algum estiver `pending`/`paid`, aborta com aviso).
+- Reescrever `seed_raffle_numbers()` para `generate_series(1, NEW.total_numbers)`.
+- Ajustar `finalize_raffle` para aceitar novo `total_numbers` (já aceita).
 
-### Passo 1 — Salvar `MERCADO_PAGO_WEBHOOK_SECRET`
-Vou abrir o formulário seguro para você colar a chave (nova, de preferência). Sem esse segredo a validação `x-signature` do webhook fica desativada.
+**Frontend**:
+- `src/routes/index.tsx`: loop `for (let i = 1; i <= 99; i++)`, `availableCount = 99 - paidCount - pendingCount`, textos ajustados.
+- `src/routes/_authenticated/admin.tsx`: `useState("99")` no default, `min={1}` e `max={active.total_numbers}` no seletor de ganhador.
 
-### Passo 2 — Validação `x-signature` no webhook
-Atualizar `src/routes/api/public/mp-webhook.ts`:
-- Ler headers `x-signature` e `x-request-id`.
-- Montar template `id:<data.id>;request-id:<x-request-id>;ts:<ts>;`.
-- Calcular HMAC-SHA256 com o secret e comparar via `timingSafeEqual` com `v1`.
-- Rejeitar com 401 se inválido; manter idempotência do processamento.
+## 2. Corrigir atualização automática após pagamento
 
-### Passo 3 — Migração admin + rifas versionadas
-Nova migração criando:
-- `raffles` (id, título, descrição, imagem_url, preço_por_número, status ativo/finalizada, ganhador, timestamps).
-- `admin_users` (user_id → auth.users) + função `is_admin(uuid)` SECURITY DEFINER.
-- Bucket de storage `raffle-images` (público read, admin write).
-- Vincular `raffle_numbers` e `orders` a `raffle_id`.
-- Seed: inserir rifa atual (Air Fryer) + admin `fradmasini@gmail.com` por email lookup.
-- GRANTs corretos + RLS (admin CRUD; público SELECT em rifas).
+Diagnóstico do fluxo atual (verificado):
+- Polling `getOrderStatus` a cada 4s consulta MP → chama `confirm_numbers` RPC → atualiza `raffle_numbers` para `paid`.
+- Realtime já está ativo em `raffle_numbers` (`ALTER PUBLICATION supabase_realtime ADD TABLE`) e o `index.tsx` escuta e invalida a query.
+- Webhook `/api/public/mp-webhook` também chama `confirm_numbers`.
 
-### Passo 4 — Autenticação
-- Rota `/auth` com botão "Entrar com Google" (usar `lovable.auth.signInWithOAuth`).
-- Rota gate `_authenticated/route.tsx` (já managed) + gate extra `_authenticated/admin/route.tsx` verificando `is_admin` via server function.
+Causa provável do "não atualiza": o segredo `PUBLIC_APP_URL` aponta para o preview, e o webhook cadastrado no Mercado Pago recebe status mas o site publicado usa outra URL / o teste foi feito sem simular aprovação no sandbox.
 
-### Passo 5 — Server functions admin (`src/lib/admin.functions.ts`)
-Com `requireSupabaseAuth` + checagem `is_admin`:
-- `listAllOrders` (relatório com filtro por rifa/status).
-- `getSalesReport` (totais vendidos, arrecadado, pendentes).
-- `createRaffle`, `updateRaffle`, `finalizeRaffle` (arquiva + zera grade + cria nova).
-- `uploadRaffleImage` (para bucket).
+Ajustes:
+- Reduzir polling para 3s (`PixPaymentDialog.tsx`).
+- Ao detectar `paid` no polling, invalidar imediatamente `["raffle-numbers"]` (garante atualização mesmo se o Realtime falhar).
+- Após publicar, atualizar o segredo `PUBLIC_APP_URL` para `https://pix-raffle-winner.lovable.app` e reconfigurar a URL do webhook no painel do Mercado Pago para `https://pix-raffle-winner.lovable.app/api/public/mp-webhook`.
 
-### Passo 6 — UI do painel `/admin`
-- Dashboard: cards com métricas (vendidos, arrecadado, pendentes, taxa conversão).
-- Aba **Pedidos**: tabela com nome, whatsapp, números, valor, status, data.
-- Aba **Rifa Ativa**: formulário editar título/descrição/imagem/preço.
-- Aba **Finalizar**: sortear/marcar ganhador → arquivar → botão "Nova Rifa".
-- Aba **Histórico**: lista rifas passadas com ganhador.
+## 3. Teste completo via Playwright (sandbox)
+- Abrir a home publicada, selecionar 3 números, preencher checkout com CPF de teste do Mercado Pago (`12345678909`), gerar PIX.
+- Verificar QR Code e "copia e cola" renderizados.
+- Verificar que o pedido foi criado em `orders` com status `pending` e `mp_payment_id` presente.
+- Simular aprovação chamando a API do MP em modo sandbox (com o token atual) via `PUT /v1/payments/{id}` com `status: approved` — se o token for de produção, apenas documentar que a confirmação só ocorre com pagamento real ou webhook.
+- Confirmar que a grade muda para "pago" via Realtime + polling.
 
-### Passo 7 — Landing page dinâmica
-Atualizar `src/routes/index.tsx` para consumir a rifa ativa do banco (título, descrição, imagem, preço) em vez de valores hardcoded.
+## 4. Admin para fradmasini@gmail.com
+Trigger `auto_promote_admin_trigger` já promove automaticamente esse e-mail ao fazer signup. Verificar em `admin_users` após primeiro login. Se já existir usuário mas não estar promovido, a migração vai fazer `INSERT ... ON CONFLICT DO NOTHING` para o user_id correspondente.
 
-### Passo 8 — Validação
-- Build.
-- Playwright: login admin, editar rifa, ver landing atualizada, simular webhook assinado.
+## 5. Publicação
+- Rodar `security--run_security_scan`.
+- Publicar via `preview_ui--publish`.
+- Instruir o usuário a: (a) atualizar a URL do webhook no MP para a URL publicada; (b) fazer signup em `/auth` com `fradmasini@gmail.com`.
 
----
-
-**Confirma?** Assim que você aprovar, começo pelo Passo 1 (formulário seguro do secret). E recomendo **regerar a chave no Mercado Pago** antes de colar.
+## Arquivos afetados
+- `supabase/migrations/<novo>_raffle_1_to_99.sql`
+- `src/routes/index.tsx`
+- `src/routes/_authenticated/admin.tsx`
+- `src/components/raffle/PixPaymentDialog.tsx`
