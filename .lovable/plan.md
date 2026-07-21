@@ -1,50 +1,35 @@
-## Objetivo
-Ajustar a rifa para 01–99, corrigir a atualização automática da grade após pagamento, validar o fluxo completo e publicar hoje.
+## Diagnóstico
 
-## 1. Números 01–99 (remover 00 e 100)
+Os números 01 e 02 (e também o 00, que não aparece na grade) ficaram travados como "reservados" por causa de **pedidos de teste antigos que expiraram, mas nunca foram liberados**:
 
-**Migração SQL** (nova):
-- `UPDATE public.raffles SET total_numbers = 99 WHERE status = 'active';`
-- `ALTER TABLE public.raffles ALTER COLUMN total_numbers SET DEFAULT 99;`
-- Apagar da rifa ativa os números 0 e 100 se estiverem `available` (se algum estiver `pending`/`paid`, aborta com aviso).
-- Reescrever `seed_raffle_numbers()` para `generate_series(1, NEW.total_numbers)`.
-- Ajustar `finalize_raffle` para aceitar novo `total_numbers` (já aceita).
+| Nº | Comprador | Expirou em |
+|----|-----------|------------|
+| 00 | Teste Automatizado | 20/07 17:53 |
+| 01 | Teste Automatizado | 20/07 18:10 |
+| 02 | Bruno Masini | 20/07 18:56 |
 
-**Frontend**:
-- `src/routes/index.tsx`: loop `for (let i = 1; i <= 99; i++)`, `availableCount = 99 - paidCount - pendingCount`, textos ajustados.
-- `src/routes/_authenticated/admin.tsx`: `useState("99")` no default, `min={1}` e `max={active.total_numbers}` no seletor de ganhador.
+Todos os três pedidos estão com `status = pending` e `expires_at` no passado. A liberação automática (`release_numbers`) só roda quando alguém abre o modal do PIX daquele pedido ou quando o webhook do MP notifica cancelamento — como ninguém está fazendo polling desses pedidos abandonados, eles ficam presos.
 
-## 2. Corrigir atualização automática após pagamento
+## Plano
 
-Diagnóstico do fluxo atual (verificado):
-- Polling `getOrderStatus` a cada 4s consulta MP → chama `confirm_numbers` RPC → atualiza `raffle_numbers` para `paid`.
-- Realtime já está ativo em `raffle_numbers` (`ALTER PUBLICATION supabase_realtime ADD TABLE`) e o `index.tsx` escuta e invalida a query.
-- Webhook `/api/public/mp-webhook` também chama `confirm_numbers`.
+1. **Liberar agora** os 3 pedidos de teste travados chamando `release_numbers` para cada um. Isso marca os pedidos como `expired` e devolve os números 00, 01 e 02 para `available`.
 
-Causa provável do "não atualiza": o segredo `PUBLIC_APP_URL` aponta para o preview, e o webhook cadastrado no Mercado Pago recebe status mas o site publicado usa outra URL / o teste foi feito sem simular aprovação no sandbox.
+2. **Prevenir recorrência** com um job leve: adicionar uma função `expire_stale_orders()` que varre pedidos `pending` com `expires_at < now()` e libera todos de uma vez. Chamá-la no início do `listRaffleNumbers` (server function que a landing usa a cada 10s) — custo desprezível e garante que qualquer pedido abandonado é limpo em segundos, sem cron.
 
-Ajustes:
-- Reduzir polling para 3s (`PixPaymentDialog.tsx`).
-- Ao detectar `paid` no polling, invalidar imediatamente `["raffle-numbers"]` (garante atualização mesmo se o Realtime falhar).
-- Após publicar, atualizar o segredo `PUBLIC_APP_URL` para `https://pix-raffle-winner.lovable.app` e reconfigurar a URL do webhook no painel do Mercado Pago para `https://pix-raffle-winner.lovable.app/api/public/mp-webhook`.
+## Detalhes técnicos
 
-## 3. Teste completo via Playwright (sandbox)
-- Abrir a home publicada, selecionar 3 números, preencher checkout com CPF de teste do Mercado Pago (`12345678909`), gerar PIX.
-- Verificar QR Code e "copia e cola" renderizados.
-- Verificar que o pedido foi criado em `orders` com status `pending` e `mp_payment_id` presente.
-- Simular aprovação chamando a API do MP em modo sandbox (com o token atual) via `PUT /v1/payments/{id}` com `status: approved` — se o token for de produção, apenas documentar que a confirmação só ocorre com pagamento real ou webhook.
-- Confirmar que a grade muda para "pago" via Realtime + polling.
-
-## 4. Admin para fradmasini@gmail.com
-Trigger `auto_promote_admin_trigger` já promove automaticamente esse e-mail ao fazer signup. Verificar em `admin_users` após primeiro login. Se já existir usuário mas não estar promovido, a migração vai fazer `INSERT ... ON CONFLICT DO NOTHING` para o user_id correspondente.
-
-## 5. Publicação
-- Rodar `security--run_security_scan`.
-- Publicar via `preview_ui--publish`.
-- Instruir o usuário a: (a) atualizar a URL do webhook no MP para a URL publicada; (b) fazer signup em `/auth` com `fradmasini@gmail.com`.
-
-## Arquivos afetados
-- `supabase/migrations/<novo>_raffle_1_to_99.sql`
-- `src/routes/index.tsx`
-- `src/routes/_authenticated/admin.tsx`
-- `src/components/raffle/PixPaymentDialog.tsx`
+- Passo 1 usa `supabase--insert` executando `SELECT public.release_numbers(order_id)` para cada um dos 3 IDs listados acima.
+- Passo 2 cria a função via migração:
+  ```sql
+  CREATE OR REPLACE FUNCTION public.expire_stale_orders()
+  RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+  BEGIN
+    UPDATE public.raffle_numbers SET status='available', order_id=NULL, updated_at=now()
+    WHERE status='pending' AND order_id IN (
+      SELECT id FROM public.orders WHERE status='pending' AND expires_at < now()
+    );
+    UPDATE public.orders SET status='expired'
+    WHERE status='pending' AND expires_at < now();
+  END; $$;
+  ```
+  E em `src/lib/raffle.functions.ts`, no início do handler de `listRaffleNumbers`, chamar `supabaseAdmin.rpc('expire_stale_orders')` (fire-and-forget).

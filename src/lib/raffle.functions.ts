@@ -183,6 +183,16 @@ export const listRaffleNumbers = createServerFn({ method: "GET" }).handler(
   async () => {
     const supabasePublic = createServerSupabasePublicClient();
 
+    // Fire-and-forget: libera pedidos expirados antes de listar.
+    try {
+      const { supabaseAdmin } = await import(
+        "@/integrations/supabase/client.server"
+      );
+      await supabaseAdmin.rpc("expire_stale_orders");
+    } catch (e) {
+      console.error("expire_stale_orders failed:", e);
+    }
+
     const { data: raffle } = await supabasePublic
       .from("raffles")
       .select("id")
