@@ -350,7 +350,7 @@ function ActiveRaffleForm() {
   const [newDesc, setNewDesc] = useState("");
   const [newImg, setNewImg] = useState("");
   const [newPrice, setNewPrice] = useState("25");
-  const [newTotal, setNewTotal] = useState("101");
+  const [newTotal, setNewTotal] = useState("99");
 
   const finalizeMut = useMutation({
     mutationFn: (payload: {
@@ -501,8 +501,8 @@ function ActiveRaffleForm() {
                 <Label>Número sorteado</Label>
                 <Input
                   type="number"
-                  min={0}
-                  max={active.total_numbers - 1}
+                  min={1}
+                  max={active.total_numbers}
                   value={winnerNumber}
                   onChange={(e) => setWinnerNumber(e.target.value)}
                   required
