@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Copy, Check, Clock, Loader2, AlertCircle } from "lucide-react";
 import {
@@ -37,6 +37,7 @@ export function PixPaymentDialog({
   const [copied, setCopied] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
   const fetchStatus = useServerFn(getOrderStatus);
+  const queryClient = useQueryClient();
 
   const expiresAtDate = useMemo(() => new Date(expiresAt), [expiresAt]);
   const [remainingSeconds, setRemainingSeconds] = useState(() =>
@@ -72,6 +73,7 @@ export function PixPaymentDialog({
 
   useEffect(() => {
     if (status?.status === "paid") {
+      queryClient.invalidateQueries({ queryKey: ["raffle-numbers"] });
       setSuccessOpen(true);
       onOpenChange(false);
       onPaid();
@@ -79,7 +81,7 @@ export function PixPaymentDialog({
       onExpired();
       onOpenChange(false);
     }
-  }, [status, onExpired, onPaid, onOpenChange]);
+  }, [status, onExpired, onPaid, onOpenChange, queryClient]);
 
   const copyToClipboard = async () => {
     if (!qrCopiaCola) return;
