@@ -79,7 +79,7 @@ function RafflePage() {
       map.set(n.number, n.status as NumberStatus);
     }
     const all: Array<{ number: number; status: NumberStatus }> = [];
-    for (let i = 0; i <= 100; i++) {
+    for (let i = 1; i <= 99; i++) {
       all.push({ number: i, status: map.get(i) || "available" });
     }
     return all;
@@ -157,7 +157,7 @@ function RafflePage() {
 
   const paidCount = mappedNumbers.filter((n) => n.status === "paid").length;
   const pendingCount = mappedNumbers.filter((n) => n.status === "pending").length;
-  const availableCount = 101 - paidCount - pendingCount;
+  const availableCount = 99 - paidCount - pendingCount;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-raffle-cream to-background">
