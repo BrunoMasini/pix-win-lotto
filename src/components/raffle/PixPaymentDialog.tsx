@@ -67,7 +67,7 @@ export function PixPaymentDialog({
     queryKey: ["order-status", orderId],
     queryFn: () => fetchStatus({ data: { orderId: orderId! } }),
     enabled: open && !!orderId,
-    refetchInterval: 4000,
+    refetchInterval: 3000,
     staleTime: 0,
   });
 
