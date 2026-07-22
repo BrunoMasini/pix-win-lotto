@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import airFryerImg from "../../public/air-fryer-prize.jpg";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,7 +13,10 @@ import {
   Loader2,
   Ticket,
   Trash2,
+  Trophy,
+  Search,
 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { NumberGrid, type NumberStatus } from "@/components/raffle/NumberGrid";
 import { CheckoutDialog } from "@/components/raffle/CheckoutDialog";
@@ -162,7 +165,18 @@ function RafflePage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-raffle-cream to-background">
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-4 flex justify-end">
+          <Link
+            to="/meus-numeros"
+            className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3 py-1.5 text-sm font-medium text-primary shadow-sm backdrop-blur-sm hover:bg-white"
+          >
+            <Search className="h-3.5 w-3.5" />
+            Consultar meus números
+          </Link>
+        </div>
+
         {/* Hero */}
+
         <div className="overflow-hidden rounded-2xl bg-white shadow-xl">
           <div className="raffle-gradient px-6 py-10 text-center text-white sm:px-12 sm:py-14">
             <span className="mb-3 inline-block rounded-full bg-white/20 px-3 py-1 text-sm font-semibold backdrop-blur-sm">
@@ -319,6 +333,41 @@ function RafflePage() {
           )}
         </div>
 
+        {/* Loteria Federal */}
+        <div className="mt-8 overflow-hidden rounded-2xl border-2 border-raffle-gold bg-white shadow-xl">
+          <div className="flex items-center gap-3 bg-raffle-gold/15 px-6 py-4">
+            <Trophy className="h-6 w-6 text-raffle-gold" />
+            <h2 className="font-display text-xl font-bold text-foreground">
+              Sorteio pela Loteria Federal
+            </h2>
+          </div>
+          <div className="space-y-3 px-6 py-5 text-sm text-foreground sm:text-base">
+            <p className="flex gap-2">
+              <span aria-hidden>➡️</span>
+              <span>
+                Vale os <strong>2 últimos números do 1º prêmio</strong> da
+                Loteria Federal.
+              </span>
+            </p>
+            <p className="flex gap-2">
+              <span aria-hidden>📌</span>
+              <span>
+                O sorteio será realizado somente quando{" "}
+                <strong>TODOS os números forem vendidos</strong>.
+              </span>
+            </p>
+            <p>
+              Assim que a cartela fechar, divulgarei a data da extração da
+              Loteria Federal.
+            </p>
+            <div className="rounded-lg bg-raffle-cream px-4 py-3 text-sm">
+              <span className="font-semibold text-foreground">Exemplo:</span>{" "}
+              1º prêmio 54.<span className="font-bold text-primary">327</span> →
+              vencedor <span className="font-bold text-primary">27</span>.
+            </div>
+          </div>
+        </div>
+
         {/* Info cards */}
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
           <div className="rounded-xl bg-white p-5 shadow-md">
@@ -335,14 +384,23 @@ function RafflePage() {
               forma criptografada.
             </p>
           </div>
-          <div className="rounded-xl bg-white p-5 shadow-md">
-            <h3 className="font-semibold text-foreground">Sorteio</h3>
+          <Link
+            to="/meus-numeros"
+            className="block rounded-xl bg-white p-5 shadow-md transition-shadow hover:shadow-lg"
+          >
+            <div className="flex items-center gap-2">
+              <Search className="h-4 w-4 text-primary" />
+              <h3 className="font-semibold text-foreground">
+                Consultar meus números
+              </h3>
+            </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              O ganhador será anunciado em nossas redes sociais e contatado pelo
-              WhatsApp cadastrado.
+              Já comprou? Confira seus pedidos e status de pagamento pelo e-mail
+              ou CPF.
             </p>
-          </div>
+          </Link>
         </div>
+
 
         <footer className="mt-12 pb-6 text-center text-sm text-muted-foreground">
           © {new Date().getFullYear()} Rifa Online. Todos os direitos reservados.

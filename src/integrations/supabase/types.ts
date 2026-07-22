@@ -177,6 +177,7 @@ export type Database = {
     }
     Functions: {
       confirm_numbers: { Args: { _order_id: string }; Returns: undefined }
+      confirm_numbers_force: { Args: { _order_id: string }; Returns: Json }
       expire_stale_orders: { Args: never; Returns: undefined }
       finalize_raffle: {
         Args: {
