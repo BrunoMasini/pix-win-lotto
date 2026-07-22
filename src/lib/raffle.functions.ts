@@ -4,7 +4,9 @@ import {
   createOrderSchema,
   orderIdSchema,
   sanitizeWhatsapp,
+  isValidCpf,
 } from "./raffle-schemas";
+
 import {
   createPixPayment,
   getPaymentStatus,
