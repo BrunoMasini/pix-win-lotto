@@ -197,15 +197,47 @@ export const getOrderStatus = createServerFn({ method: "POST" })
 export const listRaffleNumbers = createServerFn({ method: "GET" }).handler(
   async () => {
     const supabasePublic = createServerSupabasePublicClient();
+    const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
 
-    // Fire-and-forget: libera pedidos expirados antes de listar.
     try {
       const { supabaseAdmin } = await import(
         "@/integrations/supabase/client.server"
       );
+
+      // Auto-heal: pedidos que ficaram pending/expired recentemente mas na
+      // realidade foram aprovados no Mercado Pago. Corrige o caso de
+      // webhook atrasado ou pagamento aprovado próximo ao vencimento.
+      if (accessToken) {
+        const since = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+        const { data: stale } = await supabaseAdmin
+          .from("orders")
+          .select("id, mp_payment_id, status")
+          .in("status", ["pending", "expired"])
+          .not("mp_payment_id", "is", null)
+          .gte("created_at", since)
+          .limit(15);
+
+        if (stale && stale.length > 0) {
+          await Promise.all(
+            stale.map(async (o) => {
+              try {
+                const p = await getPaymentStatus(o.mp_payment_id!, accessToken);
+                if (p.status === "approved") {
+                  await supabaseAdmin.rpc("confirm_numbers_force", {
+                    _order_id: o.id,
+                  });
+                }
+              } catch (err) {
+                console.error("heal order", o.id, err);
+              }
+            }),
+          );
+        }
+      }
+
       await supabaseAdmin.rpc("expire_stale_orders");
     } catch (e) {
-      console.error("expire_stale_orders failed:", e);
+      console.error("listRaffleNumbers maintenance failed:", e);
     }
 
     const { data: raffle } = await supabasePublic
@@ -230,6 +262,7 @@ export const listRaffleNumbers = createServerFn({ method: "GET" }).handler(
     return data;
   },
 );
+
 
 export const getActiveRaffleInfo = createServerFn({ method: "GET" }).handler(
   async () => {
