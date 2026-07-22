@@ -147,37 +147,50 @@ export const getOrderStatus = createServerFn({ method: "POST" })
       return { status: "paid", orderId: data.orderId };
     }
 
-    if (order.status === "expired" || order.status === "cancelled") {
+    if (order.status === "cancelled") {
       return { status: order.status, orderId: data.orderId };
     }
 
+    // SEMPRE consultar a MP antes de expirar, para não descartar pagamentos
+    // aprovados perto do prazo. Só expiramos quando o MP também confirma.
+    if (order.mp_payment_id) {
+      try {
+        const payment = await getPaymentStatus(order.mp_payment_id, accessToken);
+
+        if (payment.status === "approved") {
+          // Usa a versão "force" para reaproveitar pedidos que já viraram expired.
+          await supabaseAdmin.rpc("confirm_numbers_force", {
+            _order_id: data.orderId,
+          });
+          return { status: "paid", orderId: data.orderId };
+        }
+
+        if (
+          ["cancelled", "rejected", "refunded", "charged_back"].includes(
+            payment.status,
+          )
+        ) {
+          await supabaseAdmin.rpc("release_numbers", { _order_id: data.orderId });
+          return { status: "cancelled", orderId: data.orderId };
+        }
+      } catch (err) {
+        console.error("getOrderStatus MP check failed:", err);
+      }
+    }
+
+    if (order.status === "expired") {
+      return { status: "expired", orderId: data.orderId };
+    }
+
     if (new Date(order.expires_at) < new Date()) {
+      // MP não aprovou até o vencimento — libera os números.
       await supabaseAdmin.rpc("release_numbers", { _order_id: data.orderId });
       return { status: "expired", orderId: data.orderId };
     }
 
-    if (!order.mp_payment_id) {
-      return { status: "pending", orderId: data.orderId };
-    }
-
-    const payment = await getPaymentStatus(order.mp_payment_id, accessToken);
-
-    if (payment.status === "approved") {
-      await supabaseAdmin.rpc("confirm_numbers", { _order_id: data.orderId });
-      return { status: "paid", orderId: data.orderId };
-    }
-
-    if (
-      ["cancelled", "rejected", "refunded", "charged_back"].includes(
-        payment.status,
-      )
-    ) {
-      await supabaseAdmin.rpc("release_numbers", { _order_id: data.orderId });
-      return { status: "cancelled", orderId: data.orderId };
-    }
-
     return { status: "pending", orderId: data.orderId };
   });
+
 
 export const listRaffleNumbers = createServerFn({ method: "GET" }).handler(
   async () => {
