@@ -63,8 +63,7 @@ export const Route = createFileRoute("/api/public/mp-webhook")({
           const { data: orders, error: findError } = await supabaseAdmin
             .from("orders")
             .select("id, status")
-            .eq("mp_payment_id", paymentId)
-            .eq("status", "pending");
+            .eq("mp_payment_id", paymentId);
 
           if (findError || !orders || orders.length === 0) {
             return new Response("ok", { status: 200 });
@@ -72,10 +71,13 @@ export const Route = createFileRoute("/api/public/mp-webhook")({
 
           for (const order of orders) {
             if (payment.status === "approved") {
-              await supabaseAdmin.rpc("confirm_numbers", {
+              // Aceita pedidos pending OU expired, contanto que os números
+              // ainda não tenham sido pagos por outra pessoa.
+              await supabaseAdmin.rpc("confirm_numbers_force", {
                 _order_id: order.id,
               });
             } else if (
+              order.status === "pending" &&
               ["cancelled", "rejected", "refunded", "charged_back"].includes(
                 payment.status,
               )
@@ -85,6 +87,7 @@ export const Route = createFileRoute("/api/public/mp-webhook")({
               });
             }
           }
+
 
           return new Response("ok", { status: 200 });
         } catch (error) {
