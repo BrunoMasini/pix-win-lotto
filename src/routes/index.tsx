@@ -165,7 +165,18 @@ function RafflePage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-raffle-cream to-background">
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-4 flex justify-end">
+          <Link
+            to="/meus-numeros"
+            className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3 py-1.5 text-sm font-medium text-primary shadow-sm backdrop-blur-sm hover:bg-white"
+          >
+            <Search className="h-3.5 w-3.5" />
+            Consultar meus números
+          </Link>
+        </div>
+
         {/* Hero */}
+
         <div className="overflow-hidden rounded-2xl bg-white shadow-xl">
           <div className="raffle-gradient px-6 py-10 text-center text-white sm:px-12 sm:py-14">
             <span className="mb-3 inline-block rounded-full bg-white/20 px-3 py-1 text-sm font-semibold backdrop-blur-sm">
