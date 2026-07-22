@@ -250,3 +250,68 @@ export const listFinishedRaffles = createServerFn({ method: "GET" }).handler(
     return data ?? [];
   },
 );
+
+const buyerLookupSchema = z
+  .object({
+    email: z.string().trim().email().max(255).optional(),
+    cpf: z.string().trim().max(14).optional(),
+  })
+  .refine((v) => !!(v.email || v.cpf), {
+    message: "Informe e-mail ou CPF.",
+  });
+
+export const getBuyerOrders = createServerFn({ method: "POST" })
+  .validator((input) => buyerLookupSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import(
+      "@/integrations/supabase/client.server"
+    );
+
+    let query = supabaseAdmin
+      .from("orders")
+      .select(
+        "id, numbers, status, amount, created_at, paid_at, expires_at, pix_qr_code_base64, pix_copia_cola, raffle_id",
+      )
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (data.email) {
+      query = query.ilike("buyer_email", data.email);
+    } else if (data.cpf) {
+      const digits = data.cpf.replace(/\D/g, "");
+      if (!isValidCpf(digits)) {
+        throw new Error("CPF inválido.");
+      }
+      query = query.eq("buyer_cpf", digits);
+    }
+
+    const { data: orders, error } = await query;
+    if (error) {
+      console.error("getBuyerOrders error:", error);
+      throw new Error("Erro ao consultar pedidos.");
+    }
+    if (!orders || orders.length === 0) return [];
+
+    const raffleIds = Array.from(new Set(orders.map((o) => o.raffle_id).filter(Boolean)));
+    const { data: raffles } = await supabaseAdmin
+      .from("raffles")
+      .select("id, title, status")
+      .in("id", raffleIds as string[]);
+
+    const raffleMap = new Map((raffles ?? []).map((r) => [r.id, r]));
+
+    return orders.map((o) => ({
+      id: o.id,
+      numbers: o.numbers,
+      status: o.status,
+      amount: Number(o.amount),
+      createdAt: o.created_at,
+      paidAt: o.paid_at,
+      expiresAt: o.expires_at,
+      raffleTitle: o.raffle_id ? raffleMap.get(o.raffle_id)?.title ?? null : null,
+      raffleStatus: o.raffle_id ? raffleMap.get(o.raffle_id)?.status ?? null : null,
+      pixQrBase64: o.status === "pending" ? o.pix_qr_code_base64 : null,
+      pixCopiaCola: o.status === "pending" ? o.pix_copia_cola : null,
+    }));
+  });
+
