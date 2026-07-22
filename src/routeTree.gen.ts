@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as MeusNumerosRouteImport } from './routes/meus-numeros'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as ApiPublicMpWebhookRouteImport } from './routes/api/public/mp-webhook'
 
+const MeusNumerosRoute = MeusNumerosRouteImport.update({
+  id: '/meus-numeros',
+  path: '/meus-numeros',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -43,12 +49,14 @@ const ApiPublicMpWebhookRoute = ApiPublicMpWebhookRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/meus-numeros': typeof MeusNumerosRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/api/public/mp-webhook': typeof ApiPublicMpWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/meus-numeros': typeof MeusNumerosRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/api/public/mp-webhook': typeof ApiPublicMpWebhookRoute
 }
@@ -57,19 +65,26 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/meus-numeros': typeof MeusNumerosRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/api/public/mp-webhook': typeof ApiPublicMpWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/admin' | '/api/public/mp-webhook'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/meus-numeros'
+    | '/admin'
+    | '/api/public/mp-webhook'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/admin' | '/api/public/mp-webhook'
+  to: '/' | '/auth' | '/meus-numeros' | '/admin' | '/api/public/mp-webhook'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/meus-numeros'
     | '/_authenticated/admin'
     | '/api/public/mp-webhook'
   fileRoutesById: FileRoutesById
@@ -78,11 +93,19 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  MeusNumerosRoute: typeof MeusNumerosRoute
   ApiPublicMpWebhookRoute: typeof ApiPublicMpWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/meus-numeros': {
+      id: '/meus-numeros'
+      path: '/meus-numeros'
+      fullPath: '/meus-numeros'
+      preLoaderRoute: typeof MeusNumerosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -136,6 +159,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  MeusNumerosRoute: MeusNumerosRoute,
   ApiPublicMpWebhookRoute: ApiPublicMpWebhookRoute,
 }
 export const routeTree = rootRouteImport

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import airFryerImg from "../../public/air-fryer-prize.jpg";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,7 +13,10 @@ import {
   Loader2,
   Ticket,
   Trash2,
+  Trophy,
+  Search,
 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { NumberGrid, type NumberStatus } from "@/components/raffle/NumberGrid";
 import { CheckoutDialog } from "@/components/raffle/CheckoutDialog";
