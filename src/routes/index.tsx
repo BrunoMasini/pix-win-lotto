@@ -322,6 +322,41 @@ function RafflePage() {
           )}
         </div>
 
+        {/* Loteria Federal */}
+        <div className="mt-8 overflow-hidden rounded-2xl border-2 border-raffle-gold bg-white shadow-xl">
+          <div className="flex items-center gap-3 bg-raffle-gold/15 px-6 py-4">
+            <Trophy className="h-6 w-6 text-raffle-gold" />
+            <h2 className="font-display text-xl font-bold text-foreground">
+              Sorteio pela Loteria Federal
+            </h2>
+          </div>
+          <div className="space-y-3 px-6 py-5 text-sm text-foreground sm:text-base">
+            <p className="flex gap-2">
+              <span aria-hidden>➡️</span>
+              <span>
+                Vale os <strong>2 últimos números do 1º prêmio</strong> da
+                Loteria Federal.
+              </span>
+            </p>
+            <p className="flex gap-2">
+              <span aria-hidden>📌</span>
+              <span>
+                O sorteio será realizado somente quando{" "}
+                <strong>TODOS os números forem vendidos</strong>.
+              </span>
+            </p>
+            <p>
+              Assim que a cartela fechar, divulgarei a data da extração da
+              Loteria Federal.
+            </p>
+            <div className="rounded-lg bg-raffle-cream px-4 py-3 text-sm">
+              <span className="font-semibold text-foreground">Exemplo:</span>{" "}
+              1º prêmio 54.<span className="font-bold text-primary">327</span> →
+              vencedor <span className="font-bold text-primary">27</span>.
+            </div>
+          </div>
+        </div>
+
         {/* Info cards */}
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
           <div className="rounded-xl bg-white p-5 shadow-md">
@@ -338,14 +373,23 @@ function RafflePage() {
               forma criptografada.
             </p>
           </div>
-          <div className="rounded-xl bg-white p-5 shadow-md">
-            <h3 className="font-semibold text-foreground">Sorteio</h3>
+          <Link
+            to="/meus-numeros"
+            className="block rounded-xl bg-white p-5 shadow-md transition-shadow hover:shadow-lg"
+          >
+            <div className="flex items-center gap-2">
+              <Search className="h-4 w-4 text-primary" />
+              <h3 className="font-semibold text-foreground">
+                Consultar meus números
+              </h3>
+            </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              O ganhador será anunciado em nossas redes sociais e contatado pelo
-              WhatsApp cadastrado.
+              Já comprou? Confira seus pedidos e status de pagamento pelo e-mail
+              ou CPF.
             </p>
-          </div>
+          </Link>
         </div>
+
 
         <footer className="mt-12 pb-6 text-center text-sm text-muted-foreground">
           © {new Date().getFullYear()} Rifa Online. Todos os direitos reservados.
