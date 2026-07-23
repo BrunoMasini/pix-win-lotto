@@ -41,6 +41,15 @@ export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
     meta: [
       { title: "Painel Admin - Rifas" },
+      {
+        name: "description",
+        content: "Relatórios de vendas, pedidos e gestão da rifa online.",
+      },
+      { property: "og:title", content: "Painel Admin - Rifas" },
+      {
+        property: "og:description",
+        content: "Área administrativa para acompanhar vendas e finalizar rifas.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),

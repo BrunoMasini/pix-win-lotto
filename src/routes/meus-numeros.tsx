@@ -27,6 +27,12 @@ export const Route = createFileRoute("/meus-numeros")({
         content:
           "Consulte os números que você reservou ou já pagou na rifa online.",
       },
+      { property: "og:title", content: "Meus números — Rifa Online" },
+      {
+        property: "og:description",
+        content:
+          "Veja seus pedidos, números pagos e reservas pendentes na rifa online.",
+      },
     ],
   }),
   component: MeusNumerosPage,

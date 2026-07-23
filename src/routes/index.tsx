@@ -26,6 +26,22 @@ import { createPixOrder, listRaffleNumbers } from "@/lib/raffle.functions";
 import type { Buyer } from "@/lib/raffle-schemas";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Rifa Air Fryer + R$ 500 no PIX" },
+      {
+        name: "description",
+        content:
+          "Escolha números de 01 a 99 na rifa Air Fryer + R$ 500 no PIX, com sorteio pela Loteria Federal.",
+      },
+      { property: "og:title", content: "Rifa Air Fryer + R$ 500 no PIX" },
+      {
+        property: "og:description",
+        content:
+          "Participe da rifa online com pagamento PIX e sorteio pela Loteria Federal quando todos os números forem vendidos.",
+      },
+    ],
+  }),
   component: RafflePage,
 });
 
