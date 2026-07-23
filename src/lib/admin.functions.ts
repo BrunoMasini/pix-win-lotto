@@ -15,7 +15,7 @@ async function ensureAdmin(context: {
   if (error) throw new Error("Erro ao verificar permissão.");
   if (data) return;
 
-  const email = context.claims?.email?.toLowerCase();
+  const email = await getContextEmail(context);
   if (email === "fradmasini@gmail.com") {
     const { supabaseAdmin } = await import(
       "@/integrations/supabase/client.server"
@@ -30,6 +30,17 @@ async function ensureAdmin(context: {
   throw new Error("Acesso negado. Você não é administrador.");
 }
 
+async function getContextEmail(context: {
+  supabase: import("@supabase/supabase-js").SupabaseClient;
+  claims?: { email?: string };
+}) {
+  const claimEmail = context.claims?.email?.toLowerCase();
+  if (claimEmail) return claimEmail;
+
+  const { data } = await context.supabase.auth.getUser();
+  return data.user?.email?.toLowerCase() ?? null;
+}
+
 export const checkIsAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -40,7 +51,7 @@ export const checkIsAdmin = createServerFn({ method: "GET" })
       .maybeSingle();
     if (data) return { isAdmin: true, userId: context.userId };
 
-    const email = context.claims.email?.toLowerCase();
+    const email = await getContextEmail(context);
     if (email === "fradmasini@gmail.com") {
       const { supabaseAdmin } = await import(
         "@/integrations/supabase/client.server"
