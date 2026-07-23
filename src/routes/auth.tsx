@@ -12,6 +12,8 @@ export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "Entrar - Painel Admin" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       {
         name: "description",
         content: "Acesse o painel administrativo da rifa online.",
@@ -19,6 +21,11 @@ export const Route = createFileRoute("/auth")({
       { property: "og:title", content: "Entrar - Painel Admin" },
       {
         property: "og:description",
+        content: "Login restrito para gerenciar a rifa online.",
+      },
+      { name: "twitter:title", content: "Entrar - Painel Admin" },
+      {
+        name: "twitter:description",
         content: "Login restrito para gerenciar a rifa online.",
       },
       { name: "robots", content: "noindex" },

@@ -29,6 +29,8 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Rifa Air Fryer + R$ 500 no PIX" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       {
         name: "description",
         content:
@@ -39,6 +41,12 @@ export const Route = createFileRoute("/")({
         property: "og:description",
         content:
           "Participe da rifa online com pagamento PIX e sorteio pela Loteria Federal quando todos os números forem vendidos.",
+      },
+      { name: "twitter:title", content: "Rifa Air Fryer + R$ 500 no PIX" },
+      {
+        name: "twitter:description",
+        content:
+          "Escolha números de 01 a 99 e acompanhe o sorteio pela Loteria Federal.",
       },
     ],
   }),
