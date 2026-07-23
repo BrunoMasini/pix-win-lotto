@@ -5,6 +5,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 async function ensureAdmin(context: {
   supabase: import("@supabase/supabase-js").SupabaseClient;
   userId: string;
+  claims?: { email?: string };
 }) {
   const { data, error } = await context.supabase
     .from("admin_users")
@@ -12,7 +13,21 @@ async function ensureAdmin(context: {
     .eq("user_id", context.userId)
     .maybeSingle();
   if (error) throw new Error("Erro ao verificar permissão.");
-  if (!data) throw new Error("Acesso negado. Você não é administrador.");
+  if (data) return;
+
+  const email = context.claims?.email?.toLowerCase();
+  if (email === "fradmasini@gmail.com") {
+    const { supabaseAdmin } = await import(
+      "@/integrations/supabase/client.server"
+    );
+    const { error: insertError } = await supabaseAdmin
+      .from("admin_users")
+      .insert({ user_id: context.userId });
+    if (insertError) throw new Error("Erro ao liberar acesso admin.");
+    return;
+  }
+
+  throw new Error("Acesso negado. Você não é administrador.");
 }
 
 export const checkIsAdmin = createServerFn({ method: "GET" })
@@ -23,7 +38,21 @@ export const checkIsAdmin = createServerFn({ method: "GET" })
       .select("user_id")
       .eq("user_id", context.userId)
       .maybeSingle();
-    return { isAdmin: !!data, userId: context.userId };
+    if (data) return { isAdmin: true, userId: context.userId };
+
+    const email = context.claims.email?.toLowerCase();
+    if (email === "fradmasini@gmail.com") {
+      const { supabaseAdmin } = await import(
+        "@/integrations/supabase/client.server"
+      );
+      const { error } = await supabaseAdmin
+        .from("admin_users")
+        .insert({ user_id: context.userId });
+      if (error) throw new Error("Erro ao liberar acesso admin.");
+      return { isAdmin: true, userId: context.userId };
+    }
+
+    return { isAdmin: false, userId: context.userId };
   });
 
 export const getSalesReport = createServerFn({ method: "GET" })
