@@ -208,20 +208,22 @@ export const listRaffleNumbers = createServerFn({ method: "GET" }).handler(
       // realidade foram aprovados no Mercado Pago. Corrige o caso de
       // webhook atrasado ou pagamento aprovado próximo ao vencimento.
       if (accessToken) {
-        const since = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+        const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
         const { data: stale } = await supabaseAdmin
           .from("orders")
-          .select("id, mp_payment_id, status")
+          .select("id, mp_payment_id, status, created_at")
           .in("status", ["pending", "expired"])
           .not("mp_payment_id", "is", null)
           .gte("created_at", since)
-          .limit(15);
+          .order("created_at", { ascending: false })
+          .limit(50);
 
         if (stale && stale.length > 0) {
           await Promise.all(
             stale.map(async (o) => {
+              if (!o.mp_payment_id) return;
               try {
-                const p = await getPaymentStatus(o.mp_payment_id!, accessToken);
+                const p = await getPaymentStatus(o.mp_payment_id, accessToken);
                 if (p.status === "approved") {
                   await supabaseAdmin.rpc("confirm_numbers_force", {
                     _order_id: o.id,

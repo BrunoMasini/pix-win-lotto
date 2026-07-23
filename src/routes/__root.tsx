@@ -77,17 +77,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Grande Sorteio: Air Fryer Elgin + R$ 500 no PIX!" },
-      { name: "description", content: "Participe do grande sorteio e concorra a uma Air Fryer Elgin 3,5L + R$ 500 no PIX. Cotas de R$ 25,00. Sorteio dos números 00 a 100." },
       { name: "author", content: "Rifa Online" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { property: "og:title", content: "Grande Sorteio: Air Fryer Elgin + R$ 500 no PIX!" },
-      { name: "twitter:title", content: "Grande Sorteio: Air Fryer Elgin + R$ 500 no PIX!" },
-      { property: "og:description", content: "Participe do grande sorteio e concorra a uma Air Fryer Elgin 3,5L + R$ 500 no PIX. Cotas de R$ 25,00. Sorteio dos números 00 a 100." },
-      { name: "twitter:description", content: "Participe do grande sorteio e concorra a uma Air Fryer Elgin 3,5L + R$ 500 no PIX. Cotas de R$ 25,00. Sorteio dos números 00 a 100." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/dfff50c1-0f63-471c-a62e-64780506a7dc/id-preview-2ed0ab68--6dabacd1-ae32-490a-bf20-7af4e0bd9589.lovable.app-1784572683417.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/dfff50c1-0f63-471c-a62e-64780506a7dc/id-preview-2ed0ab68--6dabacd1-ae32-490a-bf20-7af4e0bd9589.lovable.app-1784572683417.png" },
     ],
     links: [
       {

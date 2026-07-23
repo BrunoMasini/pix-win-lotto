@@ -41,6 +41,22 @@ export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
     meta: [
       { title: "Painel Admin - Rifas" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+      {
+        name: "description",
+        content: "Relatórios de vendas, pedidos e gestão da rifa online.",
+      },
+      { property: "og:title", content: "Painel Admin - Rifas" },
+      {
+        property: "og:description",
+        content: "Área administrativa para acompanhar vendas e finalizar rifas.",
+      },
+      { name: "twitter:title", content: "Painel Admin - Rifas" },
+      {
+        name: "twitter:description",
+        content: "Área administrativa para acompanhar vendas e finalizar rifas.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),

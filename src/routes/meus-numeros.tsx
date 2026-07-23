@@ -22,8 +22,22 @@ export const Route = createFileRoute("/meus-numeros")({
   head: () => ({
     meta: [
       { title: "Meus números — Rifa Online" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       {
         name: "description",
+        content:
+          "Consulte os números que você reservou ou já pagou na rifa online.",
+      },
+      { property: "og:title", content: "Meus números — Rifa Online" },
+      {
+        property: "og:description",
+        content:
+          "Veja seus pedidos, números pagos e reservas pendentes na rifa online.",
+      },
+      { name: "twitter:title", content: "Meus números — Rifa Online" },
+      {
+        name: "twitter:description",
         content:
           "Consulte os números que você reservou ou já pagou na rifa online.",
       },

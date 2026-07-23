@@ -15,6 +15,7 @@ import {
   Trash2,
   Trophy,
   Search,
+  ShieldCheck,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,30 @@ import { createPixOrder, listRaffleNumbers } from "@/lib/raffle.functions";
 import type { Buyer } from "@/lib/raffle-schemas";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Rifa Air Fryer + R$ 500 no PIX" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      {
+        name: "description",
+        content:
+          "Escolha números de 01 a 99 na rifa Air Fryer + R$ 500 no PIX, com sorteio pela Loteria Federal.",
+      },
+      { property: "og:title", content: "Rifa Air Fryer + R$ 500 no PIX" },
+      {
+        property: "og:description",
+        content:
+          "Participe da rifa online com pagamento PIX e sorteio pela Loteria Federal quando todos os números forem vendidos.",
+      },
+      { name: "twitter:title", content: "Rifa Air Fryer + R$ 500 no PIX" },
+      {
+        name: "twitter:description",
+        content:
+          "Escolha números de 01 a 99 e acompanhe o sorteio pela Loteria Federal.",
+      },
+    ],
+  }),
   component: RafflePage,
 });
 
@@ -165,7 +190,14 @@ function RafflePage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-raffle-cream to-background">
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-4 flex justify-end">
+        <div className="mb-4 flex flex-wrap justify-end gap-2">
+          <Link
+            to="/admin"
+            className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3 py-1.5 text-sm font-medium text-primary shadow-sm backdrop-blur-sm hover:bg-white"
+          >
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Admin
+          </Link>
           <Link
             to="/meus-numeros"
             className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3 py-1.5 text-sm font-medium text-primary shadow-sm backdrop-blur-sm hover:bg-white"
