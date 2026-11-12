@@ -207,6 +207,27 @@ function RafflePage() {
           </Link>
         </div>
 
+        {/* Resultado */}
+        <div className="mb-8 overflow-hidden rounded-2xl border-2 border-raffle-gold bg-white shadow-xl">
+          <div className="raffle-gradient px-6 py-6 text-center text-white">
+            <Trophy className="mx-auto h-10 w-10" />
+            <p className="mt-2 text-sm font-semibold uppercase tracking-wide opacity-90">Rifa encerrada · Resultado oficial</p>
+            <h2 className="font-display mt-1 text-3xl font-extrabold sm:text-4xl">Cota vencedora: 38</h2>
+            <p className="mt-1 text-lg font-semibold">Parabéns, Denise Santos! 🎉</p>
+          </div>
+          <div className="space-y-3 px-6 py-5 text-sm text-foreground sm:text-base">
+            <p>
+              De acordo com o número do 1º prêmio da Loteria Federal no dia <strong>24/10/2026</strong> (concurso 6112, bilhete 064.383, final <strong>83</strong>), não houve vencedor, pois a cota 83 não foi vendida.
+            </p>
+            <p>
+              Como não houve sorteio no dia <strong>31/10/2026</strong>, utilizamos o sorteio da data subsequente, <strong>01/11/2026</strong> (concurso 6114), cujo 1º prêmio foi o bilhete 056.<strong className="text-primary">338</strong>.
+            </p>
+            <p>
+              Pelos <strong>2 últimos dígitos</strong>, o vencedor foi a cota de número <strong className="text-primary">38</strong>. Obrigado a todos que participaram!
+            </p>
+          </div>
+        </div>
+
         {/* Hero */}
 
         <div className="overflow-hidden rounded-2xl bg-white shadow-xl">
@@ -277,7 +298,7 @@ function RafflePage() {
         </div>
 
         {/* Grid section */}
-        <div className="mt-8 rounded-2xl bg-white p-6 shadow-xl sm:p-8">
+        <div hidden className="mt-8 rounded-2xl bg-white p-6 shadow-xl sm:p-8">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-display text-2xl font-bold text-foreground">
